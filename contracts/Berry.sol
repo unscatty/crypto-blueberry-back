@@ -10,6 +10,7 @@ contract Berry {
     uint price;
     bool active;
     uint8 maxMembers;
+    uint256 pricePerMember;
   }
 
   struct User {
@@ -91,7 +92,7 @@ contract Berry {
     require(address(msg.sender) == provider.serviceOwner, 'You are not allowed to do that');
 
     planID = provider.numPlans;
-    provider.plans[planID] = SubscriptionPlan(name, description, recurrence, price, true, maxMembers);
+    provider.plans[planID] = SubscriptionPlan(name, description, recurrence, price, true, maxMembers, price / maxMembers);
 
     provider.numPlans++;
   }
@@ -106,6 +107,8 @@ contract Berry {
   function createGroup(uint providerID, uint planID, string memory groupName) external payable returns (uint groupID) {
     // Get desired plan
     SubscriptionPlan storage desiredPlan = providers[providerID].plans[planID];
+
+    require(msg.value >= desiredPlan.pricePerMember, 'You need more cash to pay for this plan');
 
     groupID = numGroups++;
 
@@ -129,12 +132,13 @@ contract Berry {
     newGroup.initialized = true;
   }
 
-  function joinGroup(uint groupID) external payable returns (bool) {
+  function joinGroup(uint groupID, uint providerID) external payable returns (bool) {
     // Get group
     Group storage group = groups[groupID];
     
     require(group.initialized, 'Group does not exist');
     require(group.numMembers < group.activePlan.maxMembers, 'Group is full already');
+    require(msg.value >= group.activePlan.pricePerMember, 'You need more cash to pay for this plan');
 
     // Create new GroupMember
     GroupMember storage newMember = group.members[msg.sender];
@@ -148,10 +152,18 @@ contract Berry {
     // Update number of members in group
     group.numMembers++;
 
-    // if ()
+    if (group.numMembers == group.activePlan.maxMembers) {
+      // Pay the subscription
+      ServiceProvider storage provider = providers[providerID];
+      payable(provider.serviceOwner).transfer(group.totalBalance);
+    }
 
     return true;
   }
+
+  // function payPlan(uint providerID, uint planID) internal {
+  //   // SubscriptionPlan storage desiredPlan = providers[providerID].plans[planID];
+  // }
 
   function leaveGroup(uint groupID) external returns (bool){
     // Get group
