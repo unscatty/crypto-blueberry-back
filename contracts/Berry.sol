@@ -194,19 +194,6 @@ contract Berry {
     return true;
   }
 
-  function withdrawFromGroup(uint groupID) external payable {
-    Group storage group = groups[groupID];
-    SubscriptionPlan storage plan = group.activePlan;
-    ServiceProvider storage provider = providers[plan.providerID];
-    
-    require(address(msg.sender) == provider.serviceOwner, 'You cannot withdraw from this account');
-    
-    if (group.numMembers == plan.maxMembers) {
-      // Pay the subscription
-      payable(msg.sender).transfer(group.totalBalance);
-    }
-  }
-
   // function payPlan(uint providerID, uint planID) internal {
   //   // SubscriptionPlan storage desiredPlan = providers[providerID].plans[planID];
   // }
@@ -227,5 +214,50 @@ contract Berry {
     group.numMembers--;
 
     return true;
+  }
+    
+  function getBalanceProvider(uint256  providerID) public view returns (uint256 ) {
+    ServiceProvider storage provider = providers[providerID];
+    return provider.serviceOwner.balance;
+  }
+
+  function getBalanceGroup(uint256  groupID) public view returns (uint256 ) {
+    Group storage group = groups[groupID];
+    return group.totalBalance;
+  }
+
+  function getProvider(uint256  providerID) public view returns (string memory, string memory, address) {
+    ServiceProvider storage provider = providers[providerID];
+    return (provider.name, provider.imageURL, provider.serviceOwner);
+  }
+
+  function getPlan(uint256  providerID, uint256  planID) public view returns (string memory, string memory, uint256 , uint256 , bool, uint256, uint256 ) {
+    SubscriptionPlan storage plan = providers[providerID].plans[planID];
+    return (plan.name, plan.description, plan.recurrence, plan.price, plan.active, plan.maxMembers, plan.pricePerMember);
+  }
+
+  function getGroup(uint256  groupID) public view returns (string memory, uint256 , uint256 , uint256 , bool) {
+    Group storage group = groups[groupID];
+    return (group.name, group.numMembers, group.totalBalance, group.activePlan.price, group.initialized);
+  }
+
+  function getNumProviders() public view returns (uint256 ) {
+    return numProviders;
+  }
+
+  function getNumPlans(uint256  providerID) public view returns (uint256 ) {
+    return providers[providerID].numPlans;
+  }
+
+  function getNumGroups() public view returns (uint256 ) {
+    return numGroups;
+  }
+
+  function getNumUsers() public view returns (uint256 ) {
+    return numUsers;
+  }
+
+  function getNumGroupMembers(uint256  groupID) public view returns (uint256 ) {
+    return groups[groupID].numMembers;
   }
 }
