@@ -3,7 +3,7 @@ import "@nomicfoundation/hardhat-toolbox";
 
 import '@typechain/hardhat'
 import '@nomiclabs/hardhat-ethers'
-// import '@nomiclabs/hardhat-waffle'
+import '@nomiclabs/hardhat-ganache'
 
 import { config as dotenvconfig } from 'dotenv'
 import syncFetch from 'sync-fetch'
@@ -50,11 +50,7 @@ const config: HardhatUserConfig = {
       gasPrice: Math.floor(gasPriceTestnet * 1.1),
       gasMultiplier: 1.1,
       timeout: 1e9
-    },
-    development: {
-      url: '127.0.0.1:8545',
-      chainId: 5777
-    },
+    }
   }
 };
 
