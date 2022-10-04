@@ -5,7 +5,7 @@ import "hardhat/console.sol";
 
 contract Berry {
   struct SubscriptionPlan {
-    // uint planId;
+    uint providerID;
     string name;
     string description;
     uint recurrence;  // in days
@@ -98,7 +98,7 @@ contract Berry {
     planID = provider.numPlans;
     // pricePerMember = price / maxMembers;
     // provider.plans[planID] = SubscriptionPlan(name, description, recurrence, price, true, maxMembers, (price / maxMembers) / 1e18);
-    provider.plans[planID] = SubscriptionPlan(name, description, recurrence, price, true, maxMembers, price / maxMembers);
+    provider.plans[planID] = SubscriptionPlan(providerID, name, description, recurrence, price, true, maxMembers, price / maxMembers);
 
     provider.numPlans++;
   }
@@ -151,7 +151,7 @@ contract Berry {
     newGroup.initialized = true;
   }
 
-  function joinGroup(uint groupID, uint providerID) external payable returns (bool) {
+  function joinGroup(uint groupID) external payable returns (bool) {
     // Get group
     Group storage group = groups[groupID];
     SubscriptionPlan storage plan = group.activePlan;
@@ -186,7 +186,7 @@ contract Berry {
 
     if (group.numMembers == plan.maxMembers) {
       // Pay the subscription
-      ServiceProvider storage provider = providers[providerID];
+      ServiceProvider storage provider = providers[plan.providerID];
       payable(provider.serviceOwner).transfer(group.totalBalance);
       // payable(provider.serviceOwner).transfer(1 ether);
     }
@@ -194,13 +194,12 @@ contract Berry {
     return true;
   }
 
-  function withdrawFromGroup(uint groupID, uint providerID) external payable {
-    ServiceProvider storage provider = providers[providerID];
-    
-    require(address(msg.sender) == provider.serviceOwner, 'You cannot withdraw from this account');
-    
+  function withdrawFromGroup(uint groupID) external payable {
     Group storage group = groups[groupID];
     SubscriptionPlan storage plan = group.activePlan;
+    ServiceProvider storage provider = providers[plan.providerID];
+    
+    require(address(msg.sender) == provider.serviceOwner, 'You cannot withdraw from this account');
     
     if (group.numMembers == plan.maxMembers) {
       // Pay the subscription
