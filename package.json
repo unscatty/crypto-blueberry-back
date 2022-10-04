@@ -23,5 +23,8 @@
     "sync-fetch": "^0.4.2",
     "typechain": "^8.1.0",
     "web3": "^1.8.0"
+  },
+  "dependencies": {
+    "@quant-finance/solidity-datetime": "^2.2.0"
   }
 }

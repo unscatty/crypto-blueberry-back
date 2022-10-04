@@ -2,6 +2,7 @@
 pragma solidity >=0.4.22 <0.9.0;
 
 import "hardhat/console.sol";
+import "@quant-finance/solidity-datetime/contracts/DateTime.sol";
 
 contract Berry {
     struct SubscriptionPlan {
@@ -38,6 +39,8 @@ contract Berry {
         uint numMembers;
         mapping(address => GroupMember) members;
         bool initialized;
+        uint creationTimestamp;
+        uint lastPaymentTimestamp;
     }
 
     // The user inside a group
@@ -162,6 +165,9 @@ contract Berry {
         newGroup.activePlan = desiredPlan;
         newGroup.name = groupName;
 
+        // Timestamps
+        newGroup.creationTimestamp = block.timestamp;
+
         // Add user to newly created group
         GroupMember storage newMember = newGroup.members[msg.sender];
         // Set user
@@ -224,32 +230,83 @@ contract Berry {
         group.numMembers++;
 
         if (group.numMembers == plan.maxMembers) {
-            // Pay the subscription
-            // block.timestamp
-            ServiceProvider storage provider = providers[plan.providerID];
-            payable(provider.serviceOwner).transfer(group.totalBalance);
-            // group.totalBalance = group.totalBalance / 2;
-            // payable(provider.serviceOwner).transfer(1 ether);
+            // Check if the subscription period has passed
+            if (
+                DateTime.addDays(group.lastPaymentTimestamp, plan.recurrence) <
+                block.timestamp
+            ) {
+                // Pay the subscription
+                ServiceProvider storage provider = providers[plan.providerID];
+                payable(provider.serviceOwner).transfer(group.totalBalance);
+                group.totalBalance = 0;
+
+                group.lastPaymentTimestamp = block.timestamp;
+            }
         }
 
         return true;
     }
 
-    function withdrawFromGroup(uint groupID) external payable {
+    function payRecurrent(uint groupID) external payable {
+        // Get group
         Group storage group = groups[groupID];
         SubscriptionPlan storage plan = group.activePlan;
-        ServiceProvider storage provider = providers[plan.providerID];
 
+        require(group.initialized, "Group does not exist");
         require(
-            address(msg.sender) == provider.serviceOwner,
-            "You cannot withdraw from this account"
+            msg.value >= plan.pricePerMember,
+            "You need more cash to pay for this plan"
         );
 
+        GroupMember storage membership = group.members[msg.sender];
+
+        // Check if user gave more than needed
+        uint excess = msg.value - plan.pricePerMember;
+
+        if (excess > 0) {
+            // Update balance of user in this group
+            membership.balance += plan.pricePerMember;
+
+            // Refund excessing
+            payable(msg.sender).transfer(excess);
+        } else {
+            membership.balance = msg.value;
+        }
+
+        // Update group balance
+        group.totalBalance += plan.pricePerMember;
+
         if (group.numMembers == plan.maxMembers) {
-            // Pay the subscription
-            payable(msg.sender).transfer(group.totalBalance);
+            // Check if the subscription period has passed
+            if (
+                DateTime.addDays(group.lastPaymentTimestamp, plan.recurrence) <
+                block.timestamp
+            ) {
+                // Pay the subscription
+                ServiceProvider storage provider = providers[plan.providerID];
+                payable(provider.serviceOwner).transfer(group.totalBalance);
+                group.totalBalance = 0;
+
+                group.lastPaymentTimestamp = block.timestamp;
+            }
         }
     }
+
+    // function withdrawFromGroup(uint groupID) external payable {
+    //     Group storage group = groups[groupID];
+    //     SubscriptionPlan storage plan = group.activePlan;
+    //     ServiceProvider storage provider = providers[plan.providerID];
+
+    //     require(
+    //         address(msg.sender) == provider.serviceOwner,
+    //         "You cannot withdraw from this account"
+    //     );
+
+    //     if (group.numMembers == plan.maxMembers) {
+    //         // Pay the subscription
+    //         payable(msg.sender).transfer(group.totalBalance);
+    //     }
+    // }
 
     // function payPlan(uint providerID, uint planID) internal {
     //   // SubscriptionPlan storage desiredPlan = providers[providerID].plans[planID];

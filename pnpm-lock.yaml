@@ -5,6 +5,7 @@ specifiers:
   '@nomiclabs/hardhat-ethers': ^2.1.1
   '@nomiclabs/hardhat-ganache': ^2.0.1
   '@nomiclabs/hardhat-web3': ^2.0.0
+  '@quant-finance/solidity-datetime': ^2.2.0
   '@typechain/ethers-v5': ^10.1.0
   '@typechain/hardhat': ^6.1.3
   '@types/sync-fetch': ^0.4.0
@@ -14,6 +15,9 @@ specifiers:
   sync-fetch: ^0.4.2
   typechain: ^8.1.0
   web3: ^1.8.0
+
+dependencies:
+  '@quant-finance/solidity-datetime': 2.2.0
 
 devDependencies:
   '@nomicfoundation/hardhat-toolbox': 2.0.0_jqlitvw5fdrz7g4v5l4wnz6fau
@@ -813,6 +817,10 @@ packages:
       hardhat: 2.11.2_mwhvu7sfp6vq5ryuwb6hlbjfka
       web3: 1.8.0
     dev: true
+
+  /@quant-finance/solidity-datetime/2.2.0:
+    resolution: {integrity: sha512-iO0EnqPKTzGCgQOkI9lerpJc0XKUhMNurSjHcA7p7nlP2K2z3U4kk9OC9eQkZUrdBtltft+kIibiDdIOYWuQMg==}
+    dev: false
 
   /@scure/base/1.1.1:
     resolution: {integrity: sha512-ZxOhsSyxYwLJj3pLZCefNitxsj093tb2vq90mp2txoYeBqbcjDjqFhyM8eUjq/uFm6zJ+mUuqxlS2FkuSY1MTA==}
