@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.4.22 <0.9.0;
 
+import "hardhat/console.sol";
+
 contract Berry {
   struct SubscriptionPlan {
     // uint planId;
@@ -47,11 +49,11 @@ contract Berry {
   }
 
   // How many providers | providerId counter
-  uint numProviders;
+  uint public numProviders;
   // How many groups | groupId counter
-  uint numGroups;
+  uint public numGroups;
   // How many users | userId counter
-  uint numUsers;
+  uint public numUsers;
 
   // Collection of providers by id
   mapping(uint => ServiceProvider) public providers;
@@ -86,12 +88,16 @@ contract Berry {
   }
 
   function addPlan(uint providerID, string memory name, string memory description, uint recurrence, uint price, uint8 maxMembers) external returns (uint planID) {
+  // function addPlan(uint providerID, string memory name, string memory description, uint recurrence, uint price, uint8 maxMembers, uint pricePerMember) external returns (uint planID) {
     // Get selected provider
     ServiceProvider storage provider = providers[providerID];
+    console.log("Plan %s has a member price of %s", name, price / maxMembers);
 
-    require(address(msg.sender) == provider.serviceOwner, 'You are not allowed to do that');
+    require(address(msg.sender) == provider.serviceOwner, 'You are not allowed to create a plan');
 
     planID = provider.numPlans;
+    // pricePerMember = price / maxMembers;
+    // provider.plans[planID] = SubscriptionPlan(name, description, recurrence, price, true, maxMembers, (price / maxMembers) / 1e18);
     provider.plans[planID] = SubscriptionPlan(name, description, recurrence, price, true, maxMembers, price / maxMembers);
 
     provider.numPlans++;
@@ -107,7 +113,9 @@ contract Berry {
   function createGroup(uint providerID, uint planID, string memory groupName) external payable returns (uint groupID) {
     // Get desired plan
     SubscriptionPlan storage desiredPlan = providers[providerID].plans[planID];
+    // SubscriptionPlan storage desiredPlan = provider;
 
+    require(desiredPlan.maxMembers > 0, 'Plan is empty');
     require(msg.value >= desiredPlan.pricePerMember, 'You need more cash to pay for this plan');
 
     groupID = numGroups++;
@@ -122,7 +130,18 @@ contract Berry {
     GroupMember storage newMember = newGroup.members[msg.sender];
     // Set user
     newMember.member = users[msg.sender];
-    newMember.balance = msg.value;
+
+    // Check if user gave more than needed
+    uint excess = msg.value - desiredPlan.pricePerMember;
+
+    if (excess > 0) {
+      newMember.balance += desiredPlan.pricePerMember;
+
+      // Refund excessing
+      payable(msg.sender).transfer(excess);
+    } else {
+      newMember.balance = msg.value;
+    }
 
     // Update number of members in group
     newGroup.numMembers++;
@@ -135,16 +154,29 @@ contract Berry {
   function joinGroup(uint groupID, uint providerID) external payable returns (bool) {
     // Get group
     Group storage group = groups[groupID];
+    SubscriptionPlan storage plan = group.activePlan;
     
     require(group.initialized, 'Group does not exist');
-    require(group.numMembers < group.activePlan.maxMembers, 'Group is full already');
-    require(msg.value >= group.activePlan.pricePerMember, 'You need more cash to pay for this plan');
+    require(group.numMembers < plan.maxMembers, 'Group is full already');
+    require(msg.value >= plan.pricePerMember, 'You need more cash to pay for this plan');
 
     // Create new GroupMember
     GroupMember storage newMember = group.members[msg.sender];
     // Set user
     newMember.member = users[msg.sender];
-    newMember.balance = msg.value;
+    // newMember.balance = msg.value;
+
+    // Check if user gave more than needed
+    uint excess = msg.value - plan.pricePerMember;
+
+    if (excess > 0) {
+      newMember.balance += plan.pricePerMember;
+
+      // Refund excessing
+      payable(msg.sender).transfer(excess);
+    } else {
+      newMember.balance = msg.value;
+    }
 
     // Update group balance
     group.totalBalance += newMember.balance;
@@ -152,13 +184,28 @@ contract Berry {
     // Update number of members in group
     group.numMembers++;
 
-    if (group.numMembers == group.activePlan.maxMembers) {
+    if (group.numMembers == plan.maxMembers) {
       // Pay the subscription
       ServiceProvider storage provider = providers[providerID];
       payable(provider.serviceOwner).transfer(group.totalBalance);
+      // payable(provider.serviceOwner).transfer(1 ether);
     }
 
     return true;
+  }
+
+  function withdrawFromGroup(uint groupID, uint providerID) external payable {
+    ServiceProvider storage provider = providers[providerID];
+    
+    require(address(msg.sender) == provider.serviceOwner, 'You cannot withdraw from this account');
+    
+    Group storage group = groups[groupID];
+    SubscriptionPlan storage plan = group.activePlan;
+    
+    if (group.numMembers == plan.maxMembers) {
+      // Pay the subscription
+      payable(msg.sender).transfer(group.totalBalance);
+    }
   }
 
   // function payPlan(uint providerID, uint planID) internal {
