@@ -19,6 +19,7 @@ contract Berry {
     struct User {
         address owner;
         string name;
+        uint berries;
     }
 
     struct ServiceProvider {
@@ -330,5 +331,118 @@ contract Berry {
         // Update groupBalance
 
         return true;
+    }
+
+    function setUserBerries() private {
+        User storage userBerry = users[msg.sender];
+        userBerry.berries += 5;
+    }
+
+    function setName(string memory name) public {
+        User storage user = users[msg.sender];
+        user.name = name;
+    }
+
+    function getName() public view returns (string memory) {
+        User storage user = users[msg.sender];
+        return user.name;
+    }
+
+    function getUserBerries() public view returns (uint) {
+        User storage userBerry = users[msg.sender];
+        return userBerry.berries;
+    }
+
+    function getBalanceProvider(uint256 providerID)
+        public
+        view
+        returns (uint256)
+    {
+        ServiceProvider storage provider = providers[providerID];
+        return provider.serviceOwner.balance;
+    }
+
+    function getBalanceGroup(uint256 groupID) public view returns (uint256) {
+        Group storage group = groups[groupID];
+        return group.totalBalance;
+    }
+
+    function getProvider(uint256 providerID)
+        public
+        view
+        returns (
+            string memory,
+            string memory,
+            address
+        )
+    {
+        ServiceProvider storage provider = providers[providerID];
+        return (provider.name, provider.imageURL, provider.serviceOwner);
+    }
+
+    function getPlan(uint256 providerID, uint256 planID)
+        public
+        view
+        returns (
+            string memory,
+            string memory,
+            uint256,
+            uint256,
+            bool,
+            uint256,
+            uint256
+        )
+    {
+        SubscriptionPlan storage plan = providers[providerID].plans[planID];
+        return (
+            plan.name,
+            plan.description,
+            plan.recurrence,
+            plan.price,
+            plan.active,
+            plan.maxMembers,
+            plan.pricePerMember
+        );
+    }
+
+    function getGroup(uint256 groupID)
+        public
+        view
+        returns (
+            string memory,
+            uint256,
+            uint256,
+            uint256,
+            bool
+        )
+    {
+        Group storage group = groups[groupID];
+        return (
+            group.name,
+            group.numMembers,
+            group.totalBalance,
+            group.activePlan.price,
+            group.initialized
+        );
+    }
+
+    function getNumProviders() public view returns (uint256) {
+        return numProviders;
+    }
+
+    function getNumPlans(uint256 providerID) public view returns (uint256) {
+        return providers[providerID].numPlans;
+    }
+
+    function getNumGroups() public view returns (uint256) {
+        return numGroups;
+    }
+
+    function getNumUsers() public view returns (uint256) {
+        return numUsers;
+    }
+
+    function getNumGroupMembers(uint256 groupID) public view returns (uint256) {
+        return groups[groupID].numMembers;
     }
 }
