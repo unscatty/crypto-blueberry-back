@@ -276,6 +276,7 @@ contract Berry {
     return userBerry.berrys;
   }
 
+
     
   function getBalanceProvider(uint256  providerID) public view returns (uint256 ) {
     ServiceProvider storage provider = providers[providerID];
@@ -321,4 +322,6 @@ contract Berry {
   function getNumGroupMembers(uint256  groupID) public view returns (uint256 ) {
     return groups[groupID].numMembers;
   }
+
+ 
 }
