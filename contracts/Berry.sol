@@ -6,6 +6,7 @@ import "@quant-finance/solidity-datetime/contracts/DateTime.sol";
 
 contract Berry {
     struct SubscriptionPlan {
+        // Provider this plan belongs to
         uint providerID;
         string name;
         string description;
@@ -20,35 +21,43 @@ contract Berry {
         address owner;
         string name;
         uint berries;
+        // Groups user belongs to
+        uint numGroups;
+        string imageURL;
+        string description;
     }
 
     struct ServiceProvider {
-        // uint providerId;
+        uint providerID;
         string name;
         string imageURL;
         address serviceOwner;
-        // Plan id
+        // Number of plans this provider has
         uint numPlans;
-        mapping(uint => SubscriptionPlan) plans;
     }
 
     struct Group {
         // uint groupId;
+        // SubscriptionPlan activePlan;
         string name;
         uint256 totalBalance;
-        SubscriptionPlan activePlan;
+        // Plan this group is associated to
+        uint planID;
+        // ID of the provider for this plan
+        uint planProviderID;
         uint numMembers;
-        mapping(address => GroupMember) members;
         bool initialized;
         uint creationTimestamp;
         uint lastPaymentTimestamp;
     }
 
-    // The user inside a group
-    struct GroupMember {
-        // uint groupId;
+    // The membership of a user to a given group
+    // Indicates the user belongs to a group
+    struct GroupMembership {
+        // Group this member belongs to
+        uint groupID;
         User member;
-        // address member; // memberID
+        // Money user has paid to this group
         uint256 balance;
     }
 
@@ -65,13 +74,19 @@ contract Berry {
     mapping(uint => Group) public groups;
     // Collection of users
     mapping(address => User) public users;
-    // // Collection of plans by providerId
-    // mapping(uint => SubscriptionPlan) public providerPlans;
-    // // Collection of Members by groupId
-    // mapping(uint => GroupMember) public groupMembers;
-
-    // constructor() public {
-    // }
+    // Each membership user has
+    // (groupID => userID/address => GroupMember)
+    mapping(uint => mapping(address => GroupMembership))
+        public userGroupMembership;
+    // Groups per user
+    // (userID/address => (groupID => Group))
+    mapping(address => mapping(uint => Group)) public groupsPerUser;
+    // Members per group
+    // (groupID => (memberID => GroupMember))
+    mapping(uint => mapping(uint => GroupMembership)) public membersPerGroup;
+    // Plans per provider
+    // (providerID => (planID => SubscriptionPlan))
+    mapping(uint => mapping(uint => SubscriptionPlan)) public plansPerProvider;
 
     // TODO: string optimizations
 
@@ -90,6 +105,7 @@ contract Berry {
 
         // Create new service provider
         ServiceProvider storage newProvider = providers[providerID];
+        newProvider.providerID = providerID;
         newProvider.name = name;
         newProvider.imageURL = imageURL;
         newProvider.serviceOwner = owner;
@@ -103,7 +119,6 @@ contract Berry {
         uint price,
         uint8 maxMembers
     ) external returns (uint planID) {
-        // function addPlan(uint providerID, string memory name, string memory description, uint recurrence, uint price, uint8 maxMembers, uint pricePerMember) external returns (uint planID) {
         // Get selected provider
         ServiceProvider storage provider = providers[providerID];
         console.log(
@@ -118,25 +133,27 @@ contract Berry {
         );
 
         planID = provider.numPlans;
-        // pricePerMember = price / maxMembers;
-        // provider.plans[planID] = SubscriptionPlan(name, description, recurrence, price, true, maxMembers, (price / maxMembers) / 1e18);
-        provider.plans[planID] = SubscriptionPlan(
-            providerID,
-            name,
-            description,
-            recurrence,
-            price,
-            true,
-            maxMembers,
-            price / maxMembers
-        );
 
+        // Save plan using provider id
+        SubscriptionPlan storage newPlan = plansPerProvider[providerID][planID];
+        newPlan.providerID = providerID;
+        newPlan.name = name;
+        newPlan.description = description;
+        newPlan.recurrence = recurrence;
+        newPlan.price = price;
+        newPlan.active = true;
+        newPlan.maxMembers = maxMembers;
+        newPlan.pricePerMember = price / maxMembers;
+
+        // Increase provider plan counter
         provider.numPlans++;
     }
 
-    function register(string memory name) external {
+    function register(string memory name, string memory imageURL, string memory description) external {
         User storage newUser = users[msg.sender];
         newUser.name = name;
+        newUser.imageURL = imageURL;
+        newUser.description = description;
 
         numUsers++;
     }
@@ -147,10 +164,9 @@ contract Berry {
         string memory groupName
     ) external payable returns (uint groupID) {
         // Get desired plan
-        SubscriptionPlan storage desiredPlan = providers[providerID].plans[
+        SubscriptionPlan storage desiredPlan = plansPerProvider[providerID][
             planID
         ];
-        // SubscriptionPlan storage desiredPlan = provider;
 
         require(desiredPlan.maxMembers > 0, "Plan is empty");
         require(
@@ -163,41 +179,63 @@ contract Berry {
         // Create new group
         Group storage newGroup = groups[groupID];
         // Set the group subscription plan
-        newGroup.activePlan = desiredPlan;
+        newGroup.planID = planID;
+        newGroup.planProviderID = providerID;
         newGroup.name = groupName;
 
         // Timestamps
         newGroup.creationTimestamp = block.timestamp;
+        newGroup.lastPaymentTimestamp = block.timestamp;
 
+        // Create user membership for this group
+        uint membershipID = newGroup.numMembers;
         // Add user to newly created group
-        GroupMember storage newMember = newGroup.members[msg.sender];
+        GroupMembership storage newMembership = membersPerGroup[groupID][
+            membershipID
+        ];
         // Set user
-        newMember.member = users[msg.sender];
+        newMembership.member = users[msg.sender];
+        newMembership.groupID = groupID;
+
+        // Update user grouCount
+        User storage user = users[msg.sender];
+        user.numGroups++;
+
+        setUserBerries();
 
         // Check if user gave more than needed
         uint excess = msg.value - desiredPlan.pricePerMember;
 
         if (excess > 0) {
-            newMember.balance += desiredPlan.pricePerMember;
+            newMembership.balance += desiredPlan.pricePerMember;
 
             // Refund excessing
             payable(msg.sender).transfer(excess);
         } else {
-            newMember.balance = msg.value;
+            newMembership.balance = msg.value;
         }
+
+        // Save membership
+        membersPerGroup[groupID][membershipID] = newMembership;
+        userGroupMembership[groupID][msg.sender] = newMembership;
 
         // Update number of members in group
         newGroup.numMembers++;
 
         // Update group balance
-        newGroup.totalBalance += newMember.balance;
+        newGroup.totalBalance += newMembership.balance;
         newGroup.initialized = true;
+
+        // Save group to collection of groupsPerUser
+        groupsPerUser[msg.sender][groupID] = newGroup;
     }
 
     function joinGroup(uint groupID) external payable returns (bool) {
         // Get group
         Group storage group = groups[groupID];
-        SubscriptionPlan storage plan = group.activePlan;
+        SubscriptionPlan storage plan = plansPerProvider[group.planProviderID][
+            group.planID
+        ];
 
         require(group.initialized, "Group does not exist");
         require(group.numMembers < plan.maxMembers, "Group is full already");
@@ -206,26 +244,40 @@ contract Berry {
             "You need more cash to pay for this plan"
         );
 
-        // Create new GroupMember
-        GroupMember storage newMember = group.members[msg.sender];
+        // Create user membership for this group
+        uint membershipID = group.numMembers;
+        // Add user to newly created group
+        GroupMembership storage newMembership = membersPerGroup[groupID][
+            membershipID
+        ];
         // Set user
-        newMember.member = users[msg.sender];
-        // newMember.balance = msg.value;
+        newMembership.member = users[msg.sender];
+        newMembership.groupID = groupID;
+
+        setUserBerries();
+
+        // Update user grouCount
+        User storage user = users[msg.sender];
+        user.numGroups++;
 
         // Check if user gave more than needed
         uint excess = msg.value - plan.pricePerMember;
 
         if (excess > 0) {
-            newMember.balance += plan.pricePerMember;
+            newMembership.balance += plan.pricePerMember;
 
             // Refund excessing
             payable(msg.sender).transfer(excess);
         } else {
-            newMember.balance = msg.value;
+            newMembership.balance = msg.value;
         }
 
         // Update group balance
-        group.totalBalance += newMember.balance;
+        group.totalBalance += newMembership.balance;
+
+        // Save membership
+        membersPerGroup[groupID][membershipID] = newMembership;
+        userGroupMembership[groupID][msg.sender] = newMembership;
 
         // Update number of members in group
         group.numMembers++;
@@ -245,13 +297,18 @@ contract Berry {
             }
         }
 
+        // Save group to collection of groupsPerUser
+        groupsPerUser[msg.sender][groupID] = group;
+
         return true;
     }
 
     function payRecurrent(uint groupID) external payable {
         // Get group
         Group storage group = groups[groupID];
-        SubscriptionPlan storage plan = group.activePlan;
+        SubscriptionPlan storage plan = plansPerProvider[group.planProviderID][
+            group.planID
+        ];
 
         require(group.initialized, "Group does not exist");
         require(
@@ -259,7 +316,10 @@ contract Berry {
             "You need more cash to pay for this plan"
         );
 
-        GroupMember storage membership = group.members[msg.sender];
+        // Get membership
+        GroupMembership storage membership = userGroupMembership[groupID][
+            msg.sender
+        ];
 
         // Check if user gave more than needed
         uint excess = msg.value - plan.pricePerMember;
@@ -319,11 +379,12 @@ contract Berry {
 
         require(group.initialized, "Group does not exist");
 
-        // Get group member of current user
-        // GroupMember storage currentGM = group.members[msg.sender];
+        // Get membership
+        // GroupMember storage membership = userGroupMembership[groupID][msg.sender];
 
         // Delete member from group
-        delete group.members[msg.sender];
+        // delete group.members[msg.sender];
+        delete userGroupMembership[groupID][msg.sender];
 
         // Update member count
         group.numMembers--;
@@ -353,96 +414,96 @@ contract Berry {
         return userBerry.berries;
     }
 
-    function getBalanceProvider(uint256 providerID)
-        public
-        view
-        returns (uint256)
-    {
-        ServiceProvider storage provider = providers[providerID];
-        return provider.serviceOwner.balance;
-    }
+    //     function getBalanceProvider(uint256 providerID)
+    //         public
+    //         view
+    //         returns (uint256)
+    //     {
+    //         ServiceProvider storage provider = providers[providerID];
+    //         return provider.serviceOwner.balance;
+    //     }
 
-    function getBalanceGroup(uint256 groupID) public view returns (uint256) {
-        Group storage group = groups[groupID];
-        return group.totalBalance;
-    }
+    //     function getBalanceGroup(uint256 groupID) public view returns (uint256) {
+    //         Group storage group = groups[groupID];
+    //         return group.totalBalance;
+    //     }
 
-    function getProvider(uint256 providerID)
-        public
-        view
-        returns (
-            string memory,
-            string memory,
-            address
-        )
-    {
-        ServiceProvider storage provider = providers[providerID];
-        return (provider.name, provider.imageURL, provider.serviceOwner);
-    }
+    //     function getProvider(uint256 providerID)
+    //         public
+    //         view
+    //         returns (
+    //             string memory,
+    //             string memory,
+    //             address
+    //         )
+    //     {
+    //         ServiceProvider storage provider = providers[providerID];
+    //         return (provider.name, provider.imageURL, provider.serviceOwner);
+    //     }
 
-    function getPlan(uint256 providerID, uint256 planID)
-        public
-        view
-        returns (
-            string memory,
-            string memory,
-            uint256,
-            uint256,
-            bool,
-            uint256,
-            uint256
-        )
-    {
-        SubscriptionPlan storage plan = providers[providerID].plans[planID];
-        return (
-            plan.name,
-            plan.description,
-            plan.recurrence,
-            plan.price,
-            plan.active,
-            plan.maxMembers,
-            plan.pricePerMember
-        );
-    }
+    //     function getPlan(uint256 providerID, uint256 planID)
+    //         public
+    //         view
+    //         returns (SubscriptionPlan memory)
+    //     // string memory,
+    //     // string memory,
+    //     // uint256,
+    //     // uint256,
+    //     // bool,
+    //     // uint256,
+    //     // uint256
+    //     {
+    //         SubscriptionPlan storage plan = providers[providerID].plans[planID];
+    //         return plan;
+    //         // return (
+    //         //     plan.name,
+    //         //     plan.description,
+    //         //     plan.recurrence,
+    //         //     plan.price,
+    //         //     plan.active,
+    //         //     plan.maxMembers,
+    //         //     plan.pricePerMember
+    //         // );
+    //     }
 
-    function getGroup(uint256 groupID)
-        public
-        view
-        returns (
-            string memory,
-            uint256,
-            uint256,
-            uint256,
-            bool
-        )
-    {
-        Group storage group = groups[groupID];
-        return (
-            group.name,
-            group.numMembers,
-            group.totalBalance,
-            group.activePlan.price,
-            group.initialized
-        );
-    }
+    //     function getGroup(uint256 groupID)
+    //         public
+    //         view
+    //         returns (
+    //             string memory,
+    //             uint256,
+    //             uint256,
+    //             uint256,
+    //             bool
+    //         )
+    //     {
+    //         Group storage group = groups[groupID];
+    //         return (
+    //             group.name,
+    //             group.numMembers,
+    //             group.totalBalance,
+    //             group.activePlan.price,
+    //             group.initialized
+    //         );
+    //     }
 
-    function getNumProviders() public view returns (uint256) {
-        return numProviders;
-    }
+    //     function getNumProviders() public view returns (uint256) {
+    //         return numProviders;
+    //     }
 
-    function getNumPlans(uint256 providerID) public view returns (uint256) {
-        return providers[providerID].numPlans;
-    }
+    //     function getNumPlans(uint256 providerID) public view returns (uint256) {
+    //         return providers[providerID].numPlans;
+    //     }
 
-    function getNumGroups() public view returns (uint256) {
-        return numGroups;
-    }
+    //     function getNumGroups() public view returns (uint256) {
+    //         return numGroups;
+    //     }
 
-    function getNumUsers() public view returns (uint256) {
-        return numUsers;
-    }
+    //     function getNumUsers() public view returns (uint256) {
+    //         return numUsers;
+    //     }
 
-    function getNumGroupMembers(uint256 groupID) public view returns (uint256) {
-        return groups[groupID].numMembers;
-    }
+    //     function getNumGroupMembers(uint256 groupID) public view returns (uint256) {
+    //         return groups[groupID].numMembers;
+    //     }
 }

@@ -1,14 +1,32 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 
+// let owner, netflix, ;
+// let berry : Berry;
+
+// function* generateSequence(maxValue: number, minValue = 0, increment = 1) {
+//   for (let i = minValue; i < maxValue; i += increment) {
+//     yield i;
+//   }
+// }
+
 describe("Berry contract", function () {
-  it("Show group creation and plan payment", async function () {
+  async function deployBerryContract() {
     const BerryContract = await ethers.getContractFactory('Berry');
     const berry = await BerryContract.deploy();
 
     await berry.deployed();
 
     const [owner, netflix, udemy, user1, user2, user3, user4] = await ethers.getSigners();
+
+    return { BerryContract, berry, owner, netflix, udemy, user1, user2, user3, user4 };
+  }
+
+  it("Show group creation and plan payment", async function () {
+
+    // const {berry, owner, netflix, udemy, user1, user2, user3, user4 } = await loadFixture(deployBerryContract);
+    const { berry, owner, netflix, udemy, user1, user2, user3, user4 } = await deployBerryContract();
+
     // const netflix = await ethers.getSigner(process.env.SERVICE_PROVIDER_ADDR!)
 
     console.log(`Netflix address: ${netflix.address}`)
@@ -35,8 +53,8 @@ describe("Berry contract", function () {
     expect(createdProvider.serviceOwner).to.equal(netflix.address);
 
 
-    const netflixMonthPlanID = await berry.connect(netflix).addPlan(0, 'monthly netflix', 'pay netflix every month', 30, ethers.utils.parseEther('10'), 2);
-    // const netflixMonthPlanTx = await berry.connect(netflix).addPlan(0, 'monthly netflix', 'pay netflix every month', 30, ethers.utils.parseEther('10.0'), 2);
+    await berry.connect(netflix).addPlan(0, 'monthly netflix', 'pay netflix every month', 30, ethers.utils.parseEther('10'), 2);
+    await berry.connect(netflix).addPlan(0, 'yearly netflix', 'pay netflix every year', 365, ethers.utils.parseEther('100.0'), 4);
     //create
     const udemyMonthPlanID = await berry.connect(udemy).addPlan(1, 'monthly udemy', 'pay udemy every month', 30, ethers.utils.parseEther('10'), 2);
     // const udemyMonthPlanTx = await berry.connect(udemy).addPlan(1, 'monthly udemy', 'pay udemy every month', 30, ethers.utils.parseEther('10.0'), 2);
@@ -55,8 +73,8 @@ describe("Berry contract", function () {
     // const groupID = await berry.connect(user1).createGroup(0, 1, 'mi grupo chido');
     let group = await berry.groups(0);
     let group2 = await berry.groups(1);
-    const plan = group.activePlan
-    const plan2 = group2.activePlan
+    const plan = await berry.plansPerProvider(group.planProviderID, group.planID);
+    const plan2 = await berry.plansPerProvider(group2.planProviderID, group2.planID);
 
     console.log(`Balance of user1 after creating group: ${(await user1.getBalance()).toString()}`);
     console.log(`Balance of user2 after creating group: ${(await user2.getBalance()).toString()}`);
@@ -68,7 +86,7 @@ describe("Berry contract", function () {
 
     group = await berry.groups(0);
     group2 = await berry.groups(1);
-    
+
     // const joinedToGroup = await berry.connect(user2).joinGroup(0, { value: ethers.utils.parseEther('5.0') });
     console.log(`intermedio Members in el gurpo 0 : ${group.numMembers.toString()}; Max members for this plan: ${plan.maxMembers.toString()}, price per member : ${plan.pricePerMember.toString()}`)
     await berry.connect(user2).leaveGroup(0);
@@ -95,7 +113,45 @@ describe("Berry contract", function () {
     console.log(`Balance of user1 after joining group: ${(await user1.getBalance()).toString()}`);
     console.log(`Balance of user2 after joining group: ${(await user2.getBalance()).toString()}`);
     console.log(`Balance of netflix after joining group: ${(await netflix.getBalance()).toString()}`);
+
+
+    // List all plans for netflix
+    const netflixAsProvider = await berry.providers(0);
+    const netflixNumPlans = netflixAsProvider.numPlans.toNumber();
+    
+    const netflixPlans = await Promise.all(Array.from({length:netflixNumPlans}, async (_, index) => await berry.plansPerProvider(netflixAsProvider.providerID, index)))
+
+    console.log(`There are ${netflixNumPlans} plans for netflix: \n\n`)
+    netflixPlans.forEach((plan) => {
+      console.log(`Plan name: ${plan.name}, plan description: ${plan.description}, plan price: ${plan.price.toString()}, plan maxMembers: ${plan.maxMembers.toString()}`)
+    })
+
+    // List all groups for user1
+    const user1Struct = await berry.users(user1.address);
+    const user1GroupCount = user1Struct.numGroups.toNumber();
+    const user1Groups = await Promise.all(Array.from({length: user1GroupCount}, async (_, index) => await berry.groupsPerUser(user1.address, index)))
+
+    console.log(`User1, '${user1Struct.name}' has ${user1GroupCount} groups: \n\n`)
+    user1Groups.forEach((group) => {
+      console.log(`Group name: ${group.name}, group Balance: ${group.totalBalance.toString()}, group total members: ${group.numMembers.toString()}, group creation: ${new Date(group.creationTimestamp.toNumber())}, grup last payment date: ${new Date(group.lastPaymentTimestamp.toNumber())}`)
+    })
+
+
+    // All groups
+    console.log('\n\nAll groups:\n')
+    const totalGroups = (await berry.numGroups()).toNumber()
+
+    const allGroups = await Promise.all(Array.from({ length: totalGroups }, async (_, groupID) => await berry.groups(groupID)));
+
+    allGroups.forEach((group) => {
+      console.log(`Group name: ${group.name}, group Balance: ${group.totalBalance.toString()}, group total members: ${group.numMembers.toString()}, group creation: ${new Date(group.creationTimestamp.toNumber())}, grup last payment date: ${new Date(group.lastPaymentTimestamp.toNumber())}`)
+    })
   });
+
+  // it('Lists all plans for provider', async function() {
+  //   const nextflixAsProvider = berry.
+  // })
+  
 });
 
 
