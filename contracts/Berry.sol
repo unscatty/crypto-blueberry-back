@@ -18,20 +18,18 @@ contract Berry {
   struct User {
     address owner;
     string name;
+    uint256 berrys;
   }
 
   struct ServiceProvider {
-    // uint providerId;
     string name;
     string imageURL;
     address serviceOwner;
-    // Plan id
     uint numPlans;
     mapping(uint => SubscriptionPlan) plans;
   }
 
   struct Group {
-    // uint groupId;
     string name;
     uint256 totalBalance;
     SubscriptionPlan activePlan;
@@ -42,9 +40,7 @@ contract Berry {
 
   // The user inside a group
   struct GroupMember {
-    // uint groupId;
     User member;
-    // address member; // memberID
     uint256 balance;
   }
 
@@ -61,15 +57,7 @@ contract Berry {
   mapping(uint => Group) public groups;
   // Collection of users
   mapping(address => User) public users;
-  // // Collection of plans by providerId
-  // mapping(uint => SubscriptionPlan) public providerPlans;
-  // // Collection of Members by groupId 
-  // mapping(uint => GroupMember) public groupMembers;
-  
-  // constructor() public {
-  // }
 
-  // TODO: string optimizations
 
   // TODO: track contract owner/deployer for service provider creation
   modifier onlyContractOwner() {
@@ -88,16 +76,13 @@ contract Berry {
   }
 
   function addPlan(uint providerID, string memory name, string memory description, uint recurrence, uint price, uint8 maxMembers) external returns (uint planID) {
-  // function addPlan(uint providerID, string memory name, string memory description, uint recurrence, uint price, uint8 maxMembers, uint pricePerMember) external returns (uint planID) {
-    // Get selected provider
+    // Get the provider
     ServiceProvider storage provider = providers[providerID];
     console.log("Plan %s has a member price of %s", name, price / maxMembers);
 
     require(address(msg.sender) == provider.serviceOwner, 'You are not allowed to create a plan');
 
     planID = provider.numPlans;
-    // pricePerMember = price / maxMembers;
-    // provider.plans[planID] = SubscriptionPlan(name, description, recurrence, price, true, maxMembers, (price / maxMembers) / 1e18);
     provider.plans[planID] = SubscriptionPlan(providerID, name, description, recurrence, price, true, maxMembers, price / maxMembers);
 
     provider.numPlans++;
@@ -130,13 +115,14 @@ contract Berry {
     GroupMember storage newMember = newGroup.members[msg.sender];
     // Set user
     newMember.member = users[msg.sender];
+    setBerryUser();
+    
 
     // Check if user gave more than needed
     uint excess = msg.value - desiredPlan.pricePerMember;
 
     if (excess > 0) {
       newMember.balance += desiredPlan.pricePerMember;
-
       // Refund excessing
       payable(msg.sender).transfer(excess);
     } else {
@@ -164,6 +150,7 @@ contract Berry {
     GroupMember storage newMember = group.members[msg.sender];
     // Set user
     newMember.member = users[msg.sender];
+    setBerryUser();
     // newMember.balance = msg.value;
 
     // Check if user gave more than needed
@@ -183,38 +170,60 @@ contract Berry {
 
     // Update number of members in group
     group.numMembers++;
-
-    if (group.numMembers == plan.maxMembers) {
-      // Pay the subscription
-      ServiceProvider storage provider = providers[plan.providerID];
-      payable(provider.serviceOwner).transfer(group.totalBalance);
-      // payable(provider.serviceOwner).transfer(1 ether);
-    }
-
     return true;
   }
 
-  // function payPlan(uint providerID, uint planID) internal {
-  //   // SubscriptionPlan storage desiredPlan = providers[providerID].plans[planID];
-  // }
 
   function leaveGroup(uint groupID) external returns (bool){
     // Get group
     Group storage group = groups[groupID];
-
     require(group.initialized, 'Group does not exist');
-    
-    // Get group member of current user
-    // GroupMember storage currentGM = group.members[msg.sender];
-
     // Delete member from group
     delete group.members[msg.sender];
-
     // Update member count
     group.numMembers--;
-
     return true;
   }
+
+  function sendValue(uint providerId, address payable adProvider) public payable{
+    for(uint i = 0; i < numGroups;  i++){
+      Group storage group = groups[i];
+      if(group.activePlan.providerID == providerId && group.numMembers == group.activePlan.maxMembers){
+        payable(adProvider).transfer(group.totalBalance);
+      }
+    }
+  }
+  
+  function withdrawFromGroup(uint groupID) external payable{
+    Group storage group = groups[groupID];
+    SubscriptionPlan storage plan = group.activePlan;
+    ServiceProvider storage provider = providers[plan.providerID];
+    require(address(msg.sender) == provider.serviceOwner,"You cannot withdraw from this account");
+    require(group.initialized, 'Group does not exist');
+    require(group.numMembers == group.activePlan.maxMembers, 'Group is not full yet');
+    payable(provider.serviceOwner).transfer(group.totalBalance);
+  }
+
+  function setBerryUser() private  {
+    User storage userBerry = users[msg.sender];
+    userBerry.berrys += 5;
+  }
+  function setName(string memory name) public {
+    User storage user = users[msg.sender];
+    user.name = name;
+  }
+
+  function getName() public view returns (string memory) {
+    User storage user = users[msg.sender];
+    return user.name;
+  }
+
+
+  function getBerryUser() public view returns (uint){
+    User storage userBerry = users[msg.sender];
+    return userBerry.berrys;
+  }
+
     
   function getBalanceProvider(uint256  providerID) public view returns (uint256 ) {
     ServiceProvider storage provider = providers[providerID];
