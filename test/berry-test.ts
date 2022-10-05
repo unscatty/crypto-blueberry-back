@@ -84,7 +84,7 @@ describe("Berry contract", function () {
     console.log("balance antes de  withdrawFromGroup:  " + balanceGroup.toString());
     let balanceProvider = await berry.connect(netflix).getBalanceProvider(0);
     console.log("balance antes de  provider antes de witdraw: " + balanceProvider.toString());
-    await berry.connect(netflix).withdrawFromGroup(0);
+    // await berry.connect(netflix).withdrawFromGroup(0);
     console.log(`user 1 have berrys: ${(await berry.connect(user1).getBerryUser()).toString()}`);
     console.log(`user 2 have berrys: ${(await berry.connect(user2).getBerryUser()).toString()}`);
     
