@@ -75,17 +75,13 @@ contract Berry {
     // Collection of users
     mapping(address => User) public users;
     // Each membership user has
-    // (groupID => userID/address => GroupMember)
     mapping(uint => mapping(address => GroupMembership))
         public userGroupMembership;
     // Groups per user
-    // (userID/address => (groupID => Group))
     mapping(address => mapping(uint => Group)) public groupsPerUser;
     // Members per group
-    // (groupID => (memberID => GroupMember))
     mapping(uint => mapping(uint => GroupMembership)) public membersPerGroup;
     // Plans per provider
-    // (providerID => (planID => SubscriptionPlan))
     mapping(uint => mapping(uint => SubscriptionPlan)) public plansPerProvider;
 
     // TODO: string optimizations
@@ -352,38 +348,11 @@ contract Berry {
             }
         }
     }
-
-    // function withdrawFromGroup(uint groupID) external payable {
-    //     Group storage group = groups[groupID];
-    //     SubscriptionPlan storage plan = group.activePlan;
-    //     ServiceProvider storage provider = providers[plan.providerID];
-
-    //     require(
-    //         address(msg.sender) == provider.serviceOwner,
-    //         "You cannot withdraw from this account"
-    //     );
-
-    //     if (group.numMembers == plan.maxMembers) {
-    //         // Pay the subscription
-    //         payable(msg.sender).transfer(group.totalBalance);
-    //     }
-    // }
-
-    // function payPlan(uint providerID, uint planID) internal {
-    //   // SubscriptionPlan storage desiredPlan = providers[providerID].plans[planID];
-    // }
-
     function leaveGroup(uint groupID) external returns (bool) {
         // Get group
         Group storage group = groups[groupID];
 
         require(group.initialized, "Group does not exist");
-
-        // Get membership
-        // GroupMember storage membership = userGroupMembership[groupID][msg.sender];
-
-        // Delete member from group
-        // delete group.members[msg.sender];
         delete userGroupMembership[groupID][msg.sender];
 
         // Update member count
@@ -404,9 +373,9 @@ contract Berry {
         user.name = name;
     }
 
-    function getName() public view returns (string memory) {
+    function setBio(string memory bio) public {
         User storage user = users[msg.sender];
-        return user.name;
+        user.description = bio;
     }
 
     function getUserBerries() public view returns (uint) {
@@ -414,96 +383,14 @@ contract Berry {
         return userBerry.berries;
     }
 
-    //     function getBalanceProvider(uint256 providerID)
-    //         public
-    //         view
-    //         returns (uint256)
-    //     {
-    //         ServiceProvider storage provider = providers[providerID];
-    //         return provider.serviceOwner.balance;
-    //     }
+    function getName() public view returns (string memory) {
+        User storage user = users[msg.sender];
+        return user.name;
+    }
 
-    //     function getBalanceGroup(uint256 groupID) public view returns (uint256) {
-    //         Group storage group = groups[groupID];
-    //         return group.totalBalance;
-    //     }
+    function getBio() public view returns (string memory) {
+        User storage user = users[msg.sender];
+        return user.description;
+    }
 
-    //     function getProvider(uint256 providerID)
-    //         public
-    //         view
-    //         returns (
-    //             string memory,
-    //             string memory,
-    //             address
-    //         )
-    //     {
-    //         ServiceProvider storage provider = providers[providerID];
-    //         return (provider.name, provider.imageURL, provider.serviceOwner);
-    //     }
-
-    //     function getPlan(uint256 providerID, uint256 planID)
-    //         public
-    //         view
-    //         returns (SubscriptionPlan memory)
-    //     // string memory,
-    //     // string memory,
-    //     // uint256,
-    //     // uint256,
-    //     // bool,
-    //     // uint256,
-    //     // uint256
-    //     {
-    //         SubscriptionPlan storage plan = providers[providerID].plans[planID];
-    //         return plan;
-    //         // return (
-    //         //     plan.name,
-    //         //     plan.description,
-    //         //     plan.recurrence,
-    //         //     plan.price,
-    //         //     plan.active,
-    //         //     plan.maxMembers,
-    //         //     plan.pricePerMember
-    //         // );
-    //     }
-
-    //     function getGroup(uint256 groupID)
-    //         public
-    //         view
-    //         returns (
-    //             string memory,
-    //             uint256,
-    //             uint256,
-    //             uint256,
-    //             bool
-    //         )
-    //     {
-    //         Group storage group = groups[groupID];
-    //         return (
-    //             group.name,
-    //             group.numMembers,
-    //             group.totalBalance,
-    //             group.activePlan.price,
-    //             group.initialized
-    //         );
-    //     }
-
-    //     function getNumProviders() public view returns (uint256) {
-    //         return numProviders;
-    //     }
-
-    //     function getNumPlans(uint256 providerID) public view returns (uint256) {
-    //         return providers[providerID].numPlans;
-    //     }
-
-    //     function getNumGroups() public view returns (uint256) {
-    //         return numGroups;
-    //     }
-
-    //     function getNumUsers() public view returns (uint256) {
-    //         return numUsers;
-    //     }
-
-    //     function getNumGroupMembers(uint256 groupID) public view returns (uint256) {
-    //         return groups[groupID].numMembers;
-    //     }
 }

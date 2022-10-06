@@ -64,9 +64,9 @@ describe("Berry contract", function () {
 
 
     // const netflixMonthPlan = (await berry.providers(netflixProviderID.value)).
-    await berry.connect(user1).register('user1');
-    await berry.connect(user2).register('user2');
-    await berry.connect(user3).register('user3');
+    // await berry.connect(user1).register('user1');
+    // await berry.connect(user2).register('user2');
+    // await berry.connect(user3).register('user3');
 
     await berry.connect(user1).createGroup(0, 0, 'mi grupo chido', { value: ethers.utils.parseEther('15.0') });
     await berry.connect(user1).createGroup(1, 0, 'mi grupo chido de udemy', { value: ethers.utils.parseEther('15.0') });
