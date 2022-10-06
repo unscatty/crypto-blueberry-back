@@ -1,5 +1,7 @@
 import { expect } from 'chai';
+import { BigNumberish, providers } from 'ethers';
 import { ethers } from 'hardhat';
+import { Berry } from '../typechain-types';
 
 // let owner, netflix, ;
 // let berry : Berry;
@@ -9,6 +11,23 @@ import { ethers } from 'hardhat';
 //     yield i;
 //   }
 // }
+
+export const getAllProviders = async (berry: Berry) => {
+  const totalProviders = (await berry.numProviders()).toNumber()
+
+  return Promise.all(Array.from({ length: totalProviders }, async (_, providerID) => await berry.providers(providerID)))
+}
+
+export const getProviderPlans = async (berry: Berry, providerID: BigNumberish) => {
+  const provider = await berry.providers(providerID)
+  const providerNumPlans = provider.numPlans.toNumber()
+
+  return Promise.all(Array.from({ length: providerNumPlans }, async (_, planID) => await berry.plansPerProvider(providerID, planID)))
+}
+
+export const getAllPlans = async (berry: Berry, allProviders: Awaited<ReturnType<typeof getAllProviders>>) => {
+  return (await Promise.all(allProviders.map(async (serviceProvider) => await getProviderPlans(berry, serviceProvider.providerID)))).flat()
+}
 
 describe("Berry contract", function () {
   async function deployBerryContract() {
@@ -64,9 +83,9 @@ describe("Berry contract", function () {
 
 
     // const netflixMonthPlan = (await berry.providers(netflixProviderID.value)).
-    // await berry.connect(user1).register('user1');
-    // await berry.connect(user2).register('user2');
-    // await berry.connect(user3).register('user3');
+    await berry.connect(user1).register('user1', '', '');
+    await berry.connect(user2).register('user2', '', '');
+    await berry.connect(user3).register('user3', '', '');
 
     await berry.connect(user1).createGroup(0, 0, 'mi grupo chido', { value: ethers.utils.parseEther('15.0') });
     await berry.connect(user1).createGroup(1, 0, 'mi grupo chido de udemy', { value: ethers.utils.parseEther('15.0') });
@@ -89,15 +108,15 @@ describe("Berry contract", function () {
 
     // const joinedToGroup = await berry.connect(user2).joinGroup(0, { value: ethers.utils.parseEther('5.0') });
     console.log(`intermedio Members in el gurpo 0 : ${group.numMembers.toString()}; Max members for this plan: ${plan.maxMembers.toString()}, price per member : ${plan.pricePerMember.toString()}`)
-    await berry.connect(user2).leaveGroup(0);
-    await berry.connect(user2).leaveGroup(1);
-    // await berry.connect(user1).leaveGroup(0);
+    // await berry.connect(user2).leaveGroup(0);
+    // await berry.connect(user2).leaveGroup(1);
+    // // await berry.connect(user1).leaveGroup(0);
     // await berry.connect(user1).leaveGroup(1);
 
     group = await berry.groups(0);
     group2 = await berry.groups(1);
     console.log(`despues Members in el gurpo 0 : ${group.numMembers.toString()}; Max members for this plan: ${plan.maxMembers.toString()}, price per member : ${plan.pricePerMember.toString()}`)
-    await berry.connect(user3).joinGroup(0, { value: ethers.utils.parseEther('15.0') })
+    // await berry.connect(user3).joinGroup(0, { value: ethers.utils.parseEther('15.0') })
     // const withdrawn = await berry.connect(netflix).withdrawFromGroup(0, 0);
 
     // try {
@@ -146,11 +165,33 @@ describe("Berry contract", function () {
     allGroups.forEach((group) => {
       console.log(`Group name: ${group.name}, group Balance: ${group.totalBalance.toString()}, group total members: ${group.numMembers.toString()}, group creation: ${new Date(group.creationTimestamp.toNumber())}, grup last payment date: ${new Date(group.lastPaymentTimestamp.toNumber())}`)
     })
+
+
+    // -----------------------------------------------------------
+    console.log('\n\n-----------------------------------------------------------\n\n');
+    console.log('Listing all providers:\n')
+  
+    // All providers
+    const allProviders = await getAllProviders(berry);
+
+    allProviders.forEach((provider) => {
+      console.log(`Provider name: ${provider.name}, plans: ${provider.numPlans}`)
+    })
+    
+    // All plans
+    console.log('\n\n-----------------------------------------------------------\n\n');
+    console.log('Listing all providers:\n')
+    const allPlans =  await getAllPlans(berry, allProviders);
+
+    allPlans.forEach((plan) => {
+      console.log(`Plan ${plan.name}, description: ${plan.description}, price: ${plan.price}`);
+    })
+  
+    // it('Lists all plans for provider', async function() {
+    //   const nextflixAsProvider = berry.
+    // })
   });
 
-  // it('Lists all plans for provider', async function() {
-  //   const nextflixAsProvider = berry.
-  // })
   
 });
 
