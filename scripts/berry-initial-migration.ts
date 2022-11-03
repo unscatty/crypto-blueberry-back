@@ -12,6 +12,7 @@ async function createProviders(berry: Berry, accountOwner: Signer) {
   // const duolingoAccount = await ethers.getSigner(process.env.PROVIDER_2_DOULINGO!)
   
   const providers = "0xBE7bAEb4Bc8500433F94A576AA737fe1a38850B6";
+  
 
   await berry.connect(accountOwner).createProvider('Coursera :)', 'https://yt3.ggpht.com/a/AGF-l7-rOqnsoRaW8LTM75Y2vuElIySnOe18OPUNnA=s900-c-k-c0xffffffff-no-rj-mo', providers)
   console.log('Creado proveedor Coursera')
@@ -98,6 +99,7 @@ async function main() {
   const accountOwner = await ethers.getSigner(process.env.SIGNER_ADDR!)
   const berry = await ethers.getContractAt('Berry', process.env.CONTRACT_ADDR!, accountOwner)
   const providerss = "0xBE7bAEb4Bc8500433F94A576AA737fe1a38850B6";
+  const providerAccount = await ethers.getSigner(providerss)
 
   await berry.deployed();
 
@@ -119,8 +121,8 @@ async function main() {
   await createPrimeVideoPlans(berry, accountOwner, 5);
 
   // Crea grupos
-  await createCourseraGroup(berry, providerss, 1)
-  await createDoulingoGroup(berry, providerss, 2)
+  await createCourseraGroup(berry, providerAccount, 1)
+  await createDoulingoGroup(berry, providerAccount, 2)
   
 
 
