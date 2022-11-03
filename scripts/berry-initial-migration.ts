@@ -7,26 +7,26 @@ export const getAllProviders = async (berry: Berry, ) => {
   return Promise.all(Array.from({ length: totalProviders }, async (_, providerID) => await berry.providers(providerID)))
 }
 
-async function createProviders(berry: Berry, accountOwner: Signer) {
-  // const courserAccount = await ethers.getSigner(process.env.PROVIDER_1_COURSERA!)
+async function createProviders(berry: Berry, accountOwner: Signer, courserAccount: Signer) {
+  
   // const duolingoAccount = await ethers.getSigner(process.env.PROVIDER_2_DOULINGO!)
   
   const providers = "0xBE7bAEb4Bc8500433F94A576AA737fe1a38850B6";
   
 
-  await berry.connect(accountOwner).createProvider('Coursera :)', 'https://yt3.ggpht.com/a/AGF-l7-rOqnsoRaW8LTM75Y2vuElIySnOe18OPUNnA=s900-c-k-c0xffffffff-no-rj-mo', providers)
+  await berry.connect(accountOwner).createProvider('Coursera', 'https://yt3.ggpht.com/a/AGF-l7-rOqnsoRaW8LTM75Y2vuElIySnOe18OPUNnA=s900-c-k-c0xffffffff-no-rj-mo', courserAccount.getAddress())
   console.log('Creado proveedor Coursera')
 
-  await berry.connect(accountOwner).createProvider('Duolingo :)', 'https://descargar.org/wp-content/uploads/2015/09/duolingo-iphone-logo.jpeg', providers)
+  await berry.connect(accountOwner).createProvider('Duolingo', 'https://descargar.org/wp-content/uploads/2015/09/duolingo-iphone-logo.jpeg', courserAccount.getAddress())
   console.log('Creado proveedor Duolingo')
 
-  await berry.connect(accountOwner).createProvider('Udemy :)', 'https://s.udemycdn.com/meta/default-meta-image-v2.png', providers)
+  await berry.connect(accountOwner).createProvider('Udemy', 'https://s.udemycdn.com/meta/default-meta-image-v2.png', courserAccount.getAddress())
   console.log('Creado proveedor Udemy')
 
-  await berry.connect(accountOwner).createProvider('HboMax :)', 'https://www.cineuropa.org/imgCache/2022/07/05/1657010333451_0620x0435_44x0x1001x702_1657010361233.jpg', providers)
+  await berry.connect(accountOwner).createProvider('HboMax', 'https://www.cineuropa.org/imgCache/2022/07/05/1657010333451_0620x0435_44x0x1001x702_1657010361233.jpg', courserAccount.getAddress())
   console.log('Creado proveedor HboMax')
 
-  await berry.connect(accountOwner).createProvider('Prime Video :)', 'https://play-lh.googleusercontent.com/VojafVZNddI6JvdDGWFrRmxc-prrcInL2AuBymsqGoeXjT4f9sv7KnetB-v3iLxk_Koi', providers)
+  await berry.connect(accountOwner).createProvider('Prime Video', 'https://play-lh.googleusercontent.com/VojafVZNddI6JvdDGWFrRmxc-prrcInL2AuBymsqGoeXjT4f9sv7KnetB-v3iLxk_Koi', providers)
   console.log('Creado proveedor Prime Video')
 }
 
@@ -97,10 +97,14 @@ async function createPrimeVideoGroup(berry: Berry, account: Signer, providerID: 
 
 async function main() {
   const accountOwner = await ethers.getSigner(process.env.SIGNER_ADDR!)
-  const berry = await ethers.getContractAt('Berry', process.env.CONTRACT_ADDR!, accountOwner)
-  const providerss = "0xBE7bAEb4Bc8500433F94A576AA737fe1a38850B6";
-  const providerAccount = await ethers.getSigner(providerss)
+  // const berry = await ethers.getContractAt('Berry', process.env.CONTRACT_ADDR!, accountOwner)
+  // const providerss = "0xBE7bAEb4Bc8500433F94A576AA737fe1a38850B6";
+  // const providerAccount = await ethers.getSigner(providerss)
+  
+  const BerryContract = await ethers.getContractFactory('Berry');
+  const berry = await BerryContract.deploy();
 
+  const providerAccount = await ethers.getSigner(process.env.PROVIDER_1_COURSERA!)
   await berry.deployed();
 
   console.log(`Contract Berry deployed at ${berry.address}`)
@@ -113,16 +117,23 @@ async function main() {
   // const duolingoAccount = await ethers.getSigner(process.env.PROVIDER_2_DOULINGO!)
   // await createDuolingoPlans(berry, duolingoAccount, 1)
 
-  await createProviders(berry, accountOwner);
-  await createCourseraPlans(berry, accountOwner, 1);
-  await createDuolingoPlans(berry, accountOwner, 2);
-  await createUdemyPlans(berry, accountOwner, 3);
-  await createHboMaxPlans(berry, accountOwner, 4);
-  await createPrimeVideoPlans(berry, accountOwner, 5);
+
+  await createProviders(berry, accountOwner, providerAccount);
+
+  //create plan
+  await createCourseraPlans(berry, providerAccount, 0);
+  await createDuolingoPlans(berry, providerAccount, 1);
+  await createUdemyPlans(berry, providerAccount, 2);
+  await createHboMaxPlans(berry, providerAccount, 3);
+  await createPrimeVideoPlans(berry, providerAccount, 4);
 
   // Crea grupos
-  await createCourseraGroup(berry, providerAccount, 1)
-  await createDoulingoGroup(berry, providerAccount, 2)
+  await createCourseraGroup(berry, providerAccount, 0)
+  await createDoulingoGroup(berry, providerAccount, 1)
+  await createUdemyGroup(berry, providerAccount, 2)
+  await createHboMaxGroup(berry, providerAccount, 3)
+  await createPrimeVideoGroup(berry, providerAccount, 4)
+
   
 
 
