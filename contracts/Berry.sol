@@ -3,7 +3,7 @@ pragma solidity >=0.4.22 <0.9.0;
 
 contract Berry {
     uint256 constant SECONDS_PER_DAY = 24 * 60 * 60;
-    
+
     struct SubscriptionPlan {
         // Provider this plan belongs to
         uint providerID;
@@ -36,7 +36,7 @@ contract Berry {
     }
 
     struct Group {
-        // uint groupId;
+        uint groupID;
         // SubscriptionPlan activePlan;
         string name;
         uint256 totalBalance;
@@ -78,6 +78,8 @@ contract Berry {
         public userGroupMembership;
     // Groups per user
     mapping(address => mapping(uint => Group)) public groupsPerUser;
+    // Keeps track of user-group key relationship
+    mapping(address => uint[]) private userGroupKeys;
     // Members per group
     mapping(uint => mapping(uint => GroupMembership)) public membersPerGroup;
     // Plans per provider
@@ -91,7 +93,53 @@ contract Berry {
         _;
     }
 
-    function addDays(uint256 timestamp, uint256 _days) internal pure returns (uint256 newTimestamp) {
+    function getAllUserGroups(address userAdress)
+        external
+        view
+        returns (Group[] memory userGroups)
+    {
+        // Get all group keys for user
+        uint[] storage groupKeys = userGroupKeys[userAdress];
+
+        userGroups = new Group[](groupKeys.length);
+
+        for (uint i = 0; i < groupKeys.length; i++) {
+            // Get group key
+            uint currentGroupKey = groupKeys[i];
+
+            // Get group for this key and this user
+            userGroups[i] = groupsPerUser[userAdress][currentGroupKey];
+        }
+    }
+
+    function removeGroupKey(address userAdress, uint groupID) internal {
+        // Get all group keys for user
+        uint[] storage groupKeys = userGroupKeys[userAdress];
+        
+        // Find the index of the key for this group ID
+        int keyIndex = -1;
+        for (uint i = 0; i < groupKeys.length; i++) {
+            if (groupKeys[i] == groupID) {
+                keyIndex = int(i);
+            }
+        }
+        
+        require(keyIndex != -1, "groupID not found");
+
+        for (uint i = uint(keyIndex); i < groupKeys.length - 1; i++) {
+            // Shift all elements past index to the left
+            groupKeys[i] = groupKeys[i + 1];
+        }
+
+        // Remove last element thus changing length of the array
+        groupKeys.pop();
+    }
+
+    function addDays(uint256 timestamp, uint256 _days)
+        internal
+        pure
+        returns (uint256 newTimestamp)
+    {
         newTimestamp = timestamp + _days * SECONDS_PER_DAY;
         require(newTimestamp >= timestamp);
     }
@@ -149,7 +197,11 @@ contract Berry {
         provider.numPlans++;
     }
 
-    function register(string memory name, string memory imageURL, string memory description) external {
+    function register(
+        string memory name,
+        string memory imageURL,
+        string memory description
+    ) external {
         User storage newUser = users[msg.sender];
         newUser.name = name;
         newUser.imageURL = imageURL;
@@ -178,6 +230,7 @@ contract Berry {
 
         // Create new group
         Group storage newGroup = groups[groupID];
+        newGroup.groupID = groupID;
         // Set the group subscription plan
         newGroup.planID = planID;
         newGroup.planProviderID = providerID;
@@ -228,6 +281,12 @@ contract Berry {
 
         // Save group to collection of groupsPerUser
         groupsPerUser[msg.sender][groupID] = newGroup;
+
+        // Save group key to array of keys
+        // Get all group keys for user
+        uint[] storage groupKeys = userGroupKeys[msg.sender];
+        // Push new group key to array
+        groupKeys.push(groupID);
     }
 
     function joinGroup(uint groupID) external payable returns (bool) {
@@ -300,6 +359,12 @@ contract Berry {
         // Save group to collection of groupsPerUser
         groupsPerUser[msg.sender][groupID] = group;
 
+        // Save group key to array of keys
+        // Get all group keys for user
+        uint[] storage groupKeys = userGroupKeys[msg.sender];
+        // Push new group key to array
+        groupKeys.push(groupID);
+
         return true;
     }
 
@@ -352,6 +417,7 @@ contract Berry {
             }
         }
     }
+
     function leaveGroup(uint groupID) external returns (bool) {
         // Get group
         Group storage group = groups[groupID];
@@ -362,7 +428,12 @@ contract Berry {
         // Update member count
         group.numMembers--;
 
-        // Update groupBalance
+        // Update user group count
+        User storage user = users[msg.sender];
+        user.numGroups--;
+
+        // Remove groupID from user list of group keys
+        removeGroupKey(msg.sender, groupID);
 
         return true;
     }
@@ -396,5 +467,4 @@ contract Berry {
         User storage user = users[msg.sender];
         return user.description;
     }
-
 }
