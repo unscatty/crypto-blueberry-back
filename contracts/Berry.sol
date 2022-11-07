@@ -5,6 +5,7 @@ contract Berry {
     uint256 constant SECONDS_PER_DAY = 24 * 60 * 60;
 
     struct SubscriptionPlan {
+        uint planID;
         // Provider this plan belongs to
         uint providerID;
         string name;
@@ -184,6 +185,7 @@ contract Berry {
 
         // Save plan using provider id
         SubscriptionPlan storage newPlan = plansPerProvider[providerID][planID];
+        newPlan.planID = planID;
         newPlan.providerID = providerID;
         newPlan.name = name;
         newPlan.description = description;
