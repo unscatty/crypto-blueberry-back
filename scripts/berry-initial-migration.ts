@@ -66,7 +66,11 @@ async function createDoulingoGroup(berry: Berry, account: Signer, providerID: Bi
   await berry.connect(account).createGroup(providerID, 2, 'Duolingo+ Grupo 3', { value: ethers.utils.parseEther('0.02') })
   console.log('Creado grupo Duolingo')
 }
-
+async function createExtraGroup(berry: Berry, account: Signer, providerID: BigNumberish){
+  await berry.connect(account).addPlan(providerID, 'Duolingo+ mensual reducida', 'Subscripción familiar a Duolingo+. mensual. 3 integrantes', 30, ethers.utils.parseEther('0.0002'), 3)
+  await berry.connect(account).createGroup(providerID, 3, 'Grupo mensual de 3 integrantes', { value: ethers.utils.parseEther('0.02') })
+  console.log('Creado grupo Extra')
+}
 async function createCourseraGroup(berry: Berry, account: Signer, providerID: BigNumberish) {
   // await berry.connect(account).createGroup(providerID, 0, 'Coursera+ Grupo 1', { value: ethers.utils.parseEther('0.0002') })
   await berry.connect(account).createGroup(providerID, 1, 'Coursera+ Grupo 2', { value: ethers.utils.parseEther('0.02') })
@@ -146,6 +150,7 @@ async function main() {
   // await createHboMaxGroup(berry, accountOwner, 3)
   // await createPrimeVideoGroup(berry, accountOwner, 4)
 
+  // createExtraGroup(berry, accountOwner, 1)
 
   const numProviders = (await berry.numProviders()).toNumber()
   console.log(`Hay un total de ${numProviders} proveedores\n`)

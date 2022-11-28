@@ -50,6 +50,16 @@ const config: HardhatUserConfig = {
       gasPrice: Math.floor(gasPriceTestnet * 1.1),
       gasMultiplier: 1.1,
       timeout: 1e9
+    },
+    localhost:{
+      url: 'HTTP://127.0.0.1:7545',
+      chainId: 1337,
+      accounts: {
+        mnemonic,
+        initialIndex: 0,
+        path: "m/44'/60'/0'/0",
+        count: 10,
+      }
     }
   }
 };
