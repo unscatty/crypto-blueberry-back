@@ -113,42 +113,36 @@ export const getAllGroups = async (berry: Berry) => {
 
 async function main() {
   const accountOwner = await ethers.getSigner(process.env.SIGNER_ADDR!)
-  const berry = await ethers.getContractAt('Berry', process.env.CONTRACT_ADDR!, accountOwner)
-  // const providerss = "0xBE7bAEb4Bc8500433F94A576AA737fe1a38850B6";
+  // const berry = await ethers.getContractAt('Berry', process.env.CONTRACT_ADDR!, accountOwner)
+  const providerss = "0xBE7bAEb4Bc8500433F94A576AA737fe1a38850B6";
   // const providerAccount = await ethers.getSigner(providerss)
   
-  // const BerryContract = await ethers.getContractFactory('Berry');
-  // const berry = await BerryContract.deploy();
+  const BerryContract = await ethers.getContractFactory('Berry');
+  const berry = await BerryContract.deploy();
 
-  const providerAccount = await ethers.getSigner(process.env.PROVIDER_1_COURSERA!)
+  // const providerAccount = await ethers.getSigner(process.env.PROVIDER_1_COURSERA!)
   await berry.deployed();
 
   console.log(`Contract Berry deployed at ${berry.address}`)
 
-  // Crea proveedores
-  // await createProviders(berry, accountOwner, providerAccount)
-
-  // Crea planes
-  // const courserAccount = await ethers.getSigner(process.env.PROVIDER_1_COURSERA!)
-  // const duolingoAccount = await ethers.getSigner(process.env.PROVIDER_2_DOULINGO!)
-  // await createDuolingoPlans(berry, duolingoAccount, 1)
 
 
-  // await createProviders(berry, accountOwner, accountOwner);
+  //create providers
+  await createProviders(berry, accountOwner, accountOwner);
 
-  // // create plan
-  // await createCourseraPlans(berry, accountOwner, 0);
-  // await createDuolingoPlans(berry, accountOwner, 1);
-  // await createUdemyPlans(berry, accountOwner, 2);
-  // await createHboMaxPlans(berry, accountOwner, 3);
-  // await createPrimeVideoPlans(berry, accountOwner, 4);
+  // create plan
+  await createCourseraPlans(berry, accountOwner, 0);
+  await createDuolingoPlans(berry, accountOwner, 1);
+  await createUdemyPlans(berry, accountOwner, 2);
+  await createHboMaxPlans(berry, accountOwner, 3);
+  await createPrimeVideoPlans(berry, accountOwner, 4);
 
-  // // Crea grupos
-  // await createCourseraGroup(berry, accountOwner, 0)
-  // await createDoulingoGroup(berry, accountOwner, 1)
-  // await createUdemyGroup(berry, accountOwner, 2)
-  // await createHboMaxGroup(berry, accountOwner, 3)
-  // await createPrimeVideoGroup(berry, accountOwner, 4)
+  // Crea grupos
+  await createCourseraGroup(berry, accountOwner, 0)
+  await createDoulingoGroup(berry, accountOwner, 1)
+  await createUdemyGroup(berry, accountOwner, 2)
+  await createHboMaxGroup(berry, accountOwner, 3)
+  await createPrimeVideoGroup(berry, accountOwner, 4)
 
   // createExtraGroup(berry, accountOwner, 1)
 
